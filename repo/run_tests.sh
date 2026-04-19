@@ -31,10 +31,17 @@ if [[ -z "${IN_DOCKER:-}" ]]; then
   TEST_IMAGE="w2t86-test:latest"
 
   # Build the test image if it doesn't exist or REBUILD=1 is set.
+  # The Dockerfile is embedded inline so no external file is required.
   if [[ "${REBUILD:-0}" == "1" ]] || ! docker image inspect "$TEST_IMAGE" &>/dev/null; then
     echo "Building test image (${TEST_IMAGE})…"
-    docker build -q -f "${SCRIPT_DIR}/Dockerfile.test" -t "$TEST_IMAGE" "${SCRIPT_DIR}" \
-      && echo "Test image ready."
+    docker build -q -t "$TEST_IMAGE" - <<'DOCKERFILE'
+FROM golang:1.22-bookworm
+RUN apt-get update -qq && \
+    apt-get install -y -qq --no-install-recommends nodejs npm && \
+    rm -rf /var/lib/apt/lists/*
+ENV CGO_ENABLED=1
+DOCKERFILE
+    echo "Test image ready."
   fi
 
   echo "Launching test container (${TEST_IMAGE})…"
